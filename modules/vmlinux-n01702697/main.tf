@@ -7,37 +7,38 @@ resource "azurerm_availability_set" "linux_avs" {
 }
 
 resource "azurerm_public_ip" "linux_pip" {
-  count               = 3
-  name                = "n01702697-vm${count.index + 1}-pip"
+  for_each = var.vm_names
+  name                = "${each.value}-pip"
   location            = var.location
   resource_group_name = var.resource_group_name
   allocation_method   = "Static"
-  domain_name_label   = "n01702697-vm${count.index + 1}"
+  domain_name_label   = each.value
 }
 
 resource "azurerm_network_interface" "linux_nic" {
-  count               = 3
-  name                = "n01702697-vm${count.index + 1}-nic"
+  for_each = var.vm_names
+  name                = "${each.value}-nic"
   location            = var.location
   resource_group_name = var.resource_group_name
 
   ip_configuration {
-    name                          = "internal-ip-${count.index + 1}"
+    name                          = "internal"
     subnet_id                     = var.subnet_id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.linux_pip[count.index].id
+    public_ip_address_id          = azurerm_public_ip.linux_pip[each.key].id
   }
 }
 
 resource "azurerm_linux_virtual_machine" "vmlinux" {
-  count               = 3
-  name                = "n01702697-vm${count.index + 1}"
+  for_each = var.vm_names
+  name                = each.value
   resource_group_name = var.resource_group_name
   location            = var.location
   size                = "Standard_B1s"
   network_interface_ids = [
-    azurerm_network_interface.linux_nic[count.index].id
+    azurerm_network_interface.linux_nic[each.key].id
   ]
+  availability_set_id = azurerm_availability_set.linux_avs.id
 
   admin_username = "n01702697"
   admin_ssh_key {
@@ -46,7 +47,7 @@ resource "azurerm_linux_virtual_machine" "vmlinux" {
   }
 
   os_disk {
-    name                 = "n01702697-vm${count.index + 1}-os-disk"
+    name                 = "${each.value}-os-disk"
     caching              = "ReadWrite"
     storage_account_type = "Premium_LRS"
     disk_size_gb         = 32
@@ -65,20 +66,20 @@ resource "azurerm_linux_virtual_machine" "vmlinux" {
 }
 
 resource "azurerm_virtual_machine_extension" "network_watcher" {
-  count                = 3
-  name                 = "NetworkWatcher-${count.index + 1}"
-  virtual_machine_id   = azurerm_linux_virtual_machine.vmlinux[count.index].id
+  for_each = var.vm_names
+  name                 = "NetworkWatcher-${each.value}"
+  virtual_machine_id   = azurerm_linux_virtual_machine.vmlinux[each.key].id
   publisher            = "Microsoft.Azure.NetworkWatcher"
   type                 = "NetworkWatcherAgentLinux"
-  type_handler_version = "1.0"
+  type_handler_version = "1.4"
 }
 
 resource "azurerm_virtual_machine_extension" "azure_monitor" {
-  count                = 3
-  name                 = "AzureMonitor-${count.index + 1}"
-  virtual_machine_id   = azurerm_linux_virtual_machine.vmlinux[count.index].id
+  for_each = var.vm_names
+  name                 = "AzureMonitor-${each.value}"
+  virtual_machine_id   = azurerm_linux_virtual_machine.vmlinux[each.key].id
   publisher            = "Microsoft.Azure.Monitor"
   type                 = "AzureMonitorLinuxAgent"
-  type_handler_version = "1.0"
+  type_handler_version = "1.9"
 }
 

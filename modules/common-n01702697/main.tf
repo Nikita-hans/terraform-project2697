@@ -21,7 +21,7 @@ resource "azurerm_recovery_services_vault" "vault" {
 
 # Create Storage Account
 resource "azurerm_storage_account" "storage" {
-  name                     = "n01702697storacc"
+  name                     = "n01702697storageacc"
   resource_group_name      = var.resource_group_name
   location                 = var.location
   account_tier             = "Standard"
